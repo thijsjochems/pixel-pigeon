@@ -1,0 +1,483 @@
+/* De pixel-look staat of valt bij image-rendering: pixelated op het canvas.
+   Alles daarboven (HUD, popups) is gewone DOM op volledige resolutie, zodat
+   tekst leesbaar blijft. */
+
+:root {
+  --ink: #0a0b14;
+  --night: #1b1f33;
+  --slate: #303a5c;
+  --steel: #4d5b85;
+  --mist: #7f8cb5;
+  --haze: #b9c2dd;
+  --bone: #f2f4ff;
+  --clay: #d97b4a;
+  --gold: #f2c45a;
+  --crimson: #c2405a;
+  --leaf: #4fae6b;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--ink);
+  /* Blokkerig arcade-lettertype. Elke glyph is een bitmapraster, dus het past bij
+     de pixels van het canvas. Wel breed: alle groottes hieronder zijn erop
+     teruggebracht, want dezelfde puntgrootte neemt bijna twee keer zoveel ruimte. */
+  font-family: "Press Start 2P", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  color: var(--bone);
+  -webkit-font-smoothing: none;
+  user-select: none;
+}
+
+#app {
+  position: fixed;
+  inset: 0;
+}
+
+#app canvas {
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
+  image-rendering: pixelated;   /* dit maakt de pixels */
+  image-rendering: crisp-edges;
+}
+
+#overlay, #hud {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* --- zwevende punten ------------------------------------------------- */
+
+.popup {
+  position: absolute;
+  top: 0;
+  left: 0;
+  font-weight: 400;
+  font-size: 14px;
+  letter-spacing: 0.02em;
+  text-shadow: 2px 2px 0 var(--ink), -1px -1px 0 var(--ink);
+  white-space: nowrap;
+  will-change: transform, opacity;
+}
+
+/* --- HUD -------------------------------------------------------------- */
+
+.hud-top {
+  position: absolute;
+  top: 18px;
+  left: 24px;
+  right: 24px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.score {
+  font-size: 34px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--bone);
+  text-shadow: 3px 3px 0 var(--ink);
+  transform-origin: left center;
+}
+
+/* Korte opblaas bij elke scorewijziging, zodat de teller niet dood aanvoelt. */
+.score.bump { animation: bump 180ms ease-out; }
+@keyframes bump {
+  0%   { transform: scale(1.22); color: var(--gold); }
+  100% { transform: scale(1);    color: var(--bone); }
+}
+
+.combo {
+  margin-top: 8px;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--gold);
+  text-shadow: 2px 2px 0 var(--ink);
+  transition: opacity 120ms linear;
+  min-height: 30px;
+}
+.combo.hot {
+  color: var(--crimson);
+  animation: pulse 320ms ease-in-out infinite alternate;
+}
+@keyframes pulse {
+  from { transform: scale(1); }
+  to   { transform: scale(1.12); }
+}
+
+.hud-bottom {
+  position: absolute;
+  bottom: 22px;
+  left: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ammo { display: flex; gap: 6px; }
+
+.pip {
+  width: 18px;
+  height: 18px;
+  background: var(--bone);
+  border: 2px solid var(--ink);
+  box-shadow: 2px 2px 0 rgba(10, 11, 20, 0.6);
+  transition: background 120ms linear, transform 120ms ease-out;
+}
+.pip.empty {
+  background: transparent;
+  transform: scale(0.82);
+}
+
+.meter {
+  width: 132px;
+  height: 10px;
+  background: rgba(10, 11, 20, 0.55);
+  border: 2px solid var(--ink);
+}
+.meter-fill {
+  height: 100%;
+  width: 100%;
+  background: var(--leaf);
+  transition: width 60ms linear, background 160ms linear;
+}
+.meter-fill.low { background: var(--crimson); }
+.meter-fill.fed { background: var(--gold); }
+
+.readout {
+  font-size: 9px;
+  color: var(--haze);
+  text-shadow: 1px 1px 0 var(--ink);
+  letter-spacing: 0.06em;
+}
+.readout.warn { color: var(--crimson); }
+
+.hint {
+  position: absolute;
+  bottom: 24px;
+  right: 24px;
+  text-align: right;
+  font-size: 9px;
+  color: var(--haze);
+  text-shadow: 1px 1px 0 var(--ink);
+  line-height: 1.8;
+  transition: opacity 900ms ease-out;
+}
+.hint b {
+  color: var(--gold);
+  background: rgba(10, 11, 20, 0.5);
+  padding: 2px 6px;
+}
+.hint-sub {
+  margin-top: 10px;
+  font-size: 8px;
+  color: var(--mist);
+}
+.hint.gone { opacity: 0; }
+
+/* Korte flits bij een zware treffer. */
+.flash {
+  position: absolute;
+  inset: 0;
+  background: var(--bone);
+  opacity: 0;
+  transition: opacity 90ms linear;
+}
+
+@media (max-width: 720px) {
+  .score { font-size: 22px; }
+  .hint  { display: none; }
+}
+
+/* --- klok ------------------------------------------------------------- */
+
+/* De klok is het belangrijkste getal in beeld: hij bepaalt of je nog speelt. */
+.clock-wrap { text-align: center; }
+
+.clock {
+  font-size: 40px;
+  font-weight: 800;
+  line-height: 0.95;
+  color: var(--bone);
+  text-shadow: 3px 3px 0 var(--ink);
+  transition: color 120ms linear, transform 120ms ease-out;
+}
+.clock.urgent {
+  color: var(--crimson);
+  animation: tick 1s steps(2) infinite;
+}
+/* Groen oplichten zodra een treffer tijd oplevert — de beloning moet je zien. */
+.clock.gain { color: var(--leaf); transform: scale(1.16); }
+
+@keyframes tick {
+  0%, 49%  { opacity: 1; }
+  50%,100% { opacity: 0.55; }
+}
+
+.clock-label.fast { color: var(--crimson); }
+
+.clock-label {
+  margin-top: 6px;
+  font-size: 8px;
+  letter-spacing: 0.22em;
+  color: var(--mist);
+  text-shadow: 1px 1px 0 var(--ink);
+  text-transform: uppercase;
+}
+
+.best-wrap { text-align: right; }
+.best-label {
+  font-size: 8px;
+  letter-spacing: 0.22em;
+  color: var(--mist);
+  text-shadow: 1px 1px 0 var(--ink);
+  text-transform: uppercase;
+}
+.best {
+  margin-top: 6px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--gold);
+  text-shadow: 2px 2px 0 var(--ink);
+}
+
+/* --- start- en eindscherm --------------------------------------------- */
+
+.screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 11, 20, 0.72);
+  transition: opacity 260ms ease-out;
+  opacity: 1;
+  text-align: center;
+}
+.screen.hidden { opacity: 0; pointer-events: none; }
+
+.screen-inner { max-width: 560px; padding: 0 24px; }
+
+.screen-title {
+  font-size: 48px;
+  font-weight: 800;
+  line-height: 0.92;
+  letter-spacing: 0.02em;
+  color: var(--bone);
+  text-shadow: 5px 5px 0 var(--ink), 0 0 32px rgba(242, 196, 90, 0.25);
+}
+.screen.over .screen-title {
+  font-size: 28px;
+  color: var(--gold);
+}
+
+.screen-body {
+  margin-top: 24px;
+  font-size: 10px;
+  line-height: 2.2;
+  color: var(--haze);
+  text-shadow: 1px 1px 0 var(--ink);
+}
+.screen-body p { margin: 8px 0; }
+.screen-body b { color: var(--bone); }
+
+.stat-big {
+  font-size: 44px;
+  font-weight: 800;
+  color: var(--bone);
+  text-shadow: 4px 4px 0 var(--ink);
+  line-height: 1.05;
+}
+.rank {
+  margin-top: 12px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--crimson);
+  text-shadow: 2px 2px 0 var(--ink);
+}
+
+.stats {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 14px;
+  font-size: 9px;
+  color: var(--mist);
+}
+.stat-best {
+  margin-top: 18px;
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+.screen-cta {
+  margin-top: 30px;
+  font-size: 10px;
+  color: var(--haze);
+  animation: breathe 1.6s ease-in-out infinite alternate;
+}
+.screen-cta b {
+  color: var(--gold);
+  background: rgba(10, 11, 20, 0.6);
+  padding: 3px 8px;
+}
+@keyframes breathe {
+  from { opacity: 0.55; }
+  to   { opacity: 1; }
+}
+
+@media (max-width: 720px) {
+  .clock { font-size: 26px; }
+  .screen-title { font-size: 30px; }
+  .stat-big { font-size: 30px; }
+}
+
+/* --- cheeky pigeon time ------------------------------------------------ */
+
+.cheeky {
+  position: absolute;
+  top: 24%;
+  left: 0;
+  right: 0;
+  text-align: center;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 180ms ease-out;
+}
+.cheeky.on { opacity: 1; }
+
+.cheeky-title {
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--crimson);
+  text-shadow: 4px 4px 0 var(--ink), 0 0 26px rgba(194, 64, 90, 0.55);
+  animation: cheekyPulse 380ms ease-in-out infinite alternate;
+}
+@keyframes cheekyPulse {
+  from { transform: scale(1) rotate(-1.5deg); }
+  to   { transform: scale(1.07) rotate(1.5deg); }
+}
+
+.cheeky-sub {
+  margin-top: 12px;
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--gold);
+  text-shadow: 2px 2px 0 var(--ink);
+}
+
+/* Balk die leegloopt zolang de power-up duurt. */
+.cheeky-bar {
+  margin: 12px auto 0;
+  width: 220px;
+  height: 8px;
+  background: rgba(10, 11, 20, 0.6);
+  border: 2px solid var(--ink);
+}
+.cheeky-bar-fill {
+  height: 100%;
+  background: var(--crimson);
+  transition: width 80ms linear;
+}
+
+/* Randgloed over het hele beeld tijdens de power-up. */
+.cheeky-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 240ms ease-out;
+  box-shadow: inset 0 0 140px 40px rgba(194, 64, 90, 0.55);
+}
+.cheeky-vignette.on { opacity: 1; }
+
+/* --- wijzer naar de cheeky duif ---------------------------------------- */
+
+.mate-marker {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: none;
+  will-change: transform;
+}
+.mate-marker.on { display: flex; }
+
+.mate-heart {
+  font-size: 26px;
+  line-height: 1;
+  color: var(--crimson);
+  text-shadow: 2px 2px 0 var(--ink), 0 0 14px rgba(194, 64, 90, 0.8);
+  animation: matebeat 700ms ease-in-out infinite alternate;
+}
+@keyframes matebeat {
+  from { transform: scale(1); }
+  to   { transform: scale(1.22); }
+}
+
+.mate-dist {
+  margin-top: 4px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--bone);
+  text-shadow: 1px 1px 0 var(--ink);
+}
+
+/* De pijl verschijnt alleen als ze buiten beeld is. */
+.mate-arrow { display: none; }
+.mate-marker.far .mate-arrow {
+  display: block;
+  width: 0;
+  height: 0;
+  margin-bottom: 3px;
+  border-left: 11px solid var(--crimson);
+  border-top: 7px solid transparent;
+  border-bottom: 7px solid transparent;
+  filter: drop-shadow(1px 1px 0 var(--ink));
+}
+
+/* --- boterham-buff ------------------------------------------------------ */
+
+.buff {
+  display: none;
+  align-items: center;
+  gap: 8px;
+}
+.buff.on { display: flex; }
+
+.buff-label {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: var(--gold);
+  text-shadow: 1px 1px 0 var(--ink);
+}
+.buff-bar {
+  display: inline-block;
+  width: 76px;
+  height: 6px;
+  background: rgba(10, 11, 20, 0.6);
+  border: 2px solid var(--ink);
+}
+.buff-fill {
+  display: block;
+  height: 100%;
+  background: var(--gold);
+  transition: width 80ms linear;
+}
