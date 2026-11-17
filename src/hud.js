@@ -68,11 +68,13 @@ export class HUD {
         <div class="mate-dist" id="mate-dist"></div>
       </div>
 
+      <div class="stick" id="stick"><div class="stick-knob" id="stick-knob"></div></div>
+
       <div class="flash" id="flash"></div>
       <div class="cheeky-vignette" id="cheeky-vignette"></div>
       <div class="cheeky" id="cheeky">
         <div class="cheeky-title">CHEEKY PIGEON TIME</div>
-        <div class="cheeky-sub">free ammo &middot; double points &middot; hold to fire</div>
+        <div class="cheeky-sub">free ammo &middot; double points &middot; <span id="cheeky-fire">hold to fire</span></div>
         <div class="cheeky-bar"><div class="cheeky-bar-fill" id="cheeky-bar"></div></div>
       </div>
 
@@ -108,7 +110,16 @@ export class HUD {
       screenTitle: root.querySelector('#screen-title'),
       screenBody: root.querySelector('#screen-body'),
       screenCta: root.querySelector('#screen-cta'),
+      cheekyFire: root.querySelector('#cheeky-fire'),
+      stick: root.querySelector('#stick'),
+      stickKnob: root.querySelector('#stick-knob'),
     };
+
+    // Telefoon of tablet: dan spreken de schermen over tikken in plaats van toetsen.
+    // Een laptop met aanraakscherm schakelt om zodra er echt getikt wordt.
+    this.coarse = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
+    this.touch = null;
+    this.setTouch(false);
 
     this.pips = [];
     for (let i = 0; i < AMMO_MAX; i++) {
@@ -271,6 +282,39 @@ export class HUD {
     }
   }
 
+  /** Schakel de teksten naar tikken. Goedkoop bij elke frame: doet alleen iets bij een wissel. */
+  setTouch(used) {
+    const touch = this.coarse || used;
+    if (touch === this.touch) return;
+    this.touch = touch;
+    document.body.classList.toggle('touch', touch);
+    this.el.cheekyFire.textContent = touch ? 'tap to fire' : 'hold to fire';
+    this._phase = null;   // start- of eindscherm opnieuw opbouwen met de juiste tekst
+  }
+
+  /**
+   * De zwevende stick onder je duim. Alleen een hulpmiddel om te zien waar het
+   * midden ligt; de besturing zelf zit in input.js.
+   */
+  updateStick(stick) {
+    const el = this.el.stick;
+    if (!stick.active) {
+      if (this._stickOn) el.classList.remove('on');
+      this._stickOn = false;
+      return;
+    }
+    if (!this._stickOn) el.classList.add('on');
+    this._stickOn = true;
+    el.style.transform = `translate(${stick.x0}px, ${stick.y0}px)`;
+    // Knop volgt de vinger, maar blijft binnen de ring.
+    let dx = stick.x - stick.x0;
+    let dy = stick.y - stick.y0;
+    const d = Math.hypot(dx, dy);
+    const max = 44;
+    if (d > max) { dx *= max / d; dy *= max / d; }
+    this.el.stickKnob.style.transform = `translate(${dx}px, ${dy}px)`;
+  }
+
   /** Start- en eindscherm. Alleen bij een faseovergang aanraken. */
   _updatePhase(state) {
     if (state.phase === this._phase) return;
@@ -285,7 +329,15 @@ export class HUD {
         <p>Somewhere out there sits a pigeon with a <b style="color:var(--crimson)">heart</b>
         above her. Go say hello.</p>
       `;
-      el.screenCta.innerHTML = 'Press <b>Space</b> to take off';
+      if (this.touch) {
+        el.screenBody.innerHTML += `
+          <p class="touch-help"><b>Drag</b> to steer &middot; drag <b>up</b> to flap &middot;
+          drag <b>down</b> to dive &middot; <b>tap</b> to drop</p>
+        `;
+      }
+      el.screenCta.innerHTML = this.touch
+        ? '<b>Tap</b> to take off'
+        : 'Press <b>Space</b> to take off';
       el.screen.classList.remove('hidden', 'over');
       return;
     }
@@ -312,7 +364,9 @@ export class HUD {
       </div>
       <div class="stat-best">${state.newRecord ? 'new personal best' : `best ever: ${state.best}`}</div>
     `;
-    el.screenCta.innerHTML = 'Press <b>R</b> to go again';
+    el.screenCta.innerHTML = this.touch
+      ? '<b>Tap</b> to go again'
+      : 'Press <b>R</b> to go again';
     el.screen.classList.remove('hidden');
     el.screen.classList.add('over');
   }

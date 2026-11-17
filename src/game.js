@@ -42,6 +42,7 @@ const GROUND_REF = new THREE.Vector3();
 const FED_AMMO_REGEN = 0.55; // met een volle krop maak je veel sneller nieuwe munitie
 const FLUSH_POINTS = 60;     // wat het opjagen van een zwerm zelf al waard is
 const FLUSH_TIME = 1.0;
+const RESTART_DELAY = 1.2;   // seconden na het eindsignaal voordat een tik opnieuw start
 
 export class Game {
   constructor(input, overlayEl, hudEl) {
@@ -110,6 +111,7 @@ export class Game {
       flushes: 0,
       flockHits: 0,
       grazes: 0,
+      overAt: 0,             // s.elapsed op het moment dat de ronde afliep
     };
     this._lastTick = -1;
     this._rapidTimer = 0;
@@ -165,6 +167,18 @@ export class Game {
 
     if (this.input.hit('mute')) s.muted = this.audio.toggleMute();
     if (this.input.hit('restart')) this.reset();
+
+    // Op de telefoon is er geen R. Een tik op het eindscherm start opnieuw, maar pas
+    // na even: anders gooit de laatste poep van de ronde je score meteen weg.
+    if (s.phase === 'over' && this.input.tapped && s.elapsed - s.overAt > RESTART_DELAY) {
+      this.reset();
+    }
+
+    // Een zittende duif kan niet poepen en niet richten, maar wel opstijgen. Een tik
+    // betekent dan wat Space betekent. Zo werkt ook de eerste tik op het titelscherm.
+    if (this.input.tapped && (this.pigeon.perched || this.pigeon.grounded)) {
+      this.input.tapToFlap();
+    }
 
     // Op het titelscherm vliegt de duif gewoon door; de eerste actie start de ronde.
     if (s.phase === 'ready' && this._wantsStart()) this._startRound();
@@ -286,7 +300,10 @@ export class Game {
 
   _wantsStart() {
     const i = this.input;
-    return i.hit('poop') || i.hit('flap') || i.hit('thrust') || i.hit('left') || i.hit('right');
+    // Slepen telt ook: anders stijgt de duif op met een sleep omhoog terwijl de klok
+    // nog op het titelscherm staat te wachten.
+    return i.hit('poop') || i.hit('flap') || i.hit('thrust') || i.hit('left') || i.hit('right')
+      || i.dragging;
   }
 
   _startRound() {
@@ -304,6 +321,7 @@ export class Game {
   _endRound() {
     const s = this.state;
     s.phase = 'over';
+    s.overAt = s.elapsed;
     // Naar huis. De duif vliegt zelf terug naar het monument waar hij begon en gaat
     // daar weer zitten, terwijl jij naar je score kijkt.
     this.pigeon.flyHome(this.city.startPerch);
@@ -572,7 +590,9 @@ export class Game {
   /** DOM-effecten die de projectie nodig hebben. */
   updateOverlay(dt, width, height) {
     this.fx.text.update(dt, this.camera, width, height);
+    this.hud.setTouch(this.input.touchUsed);
     this.hud.update(this.state, this.pigeon, dt);
+    this.hud.updateStick(this.input.stickState());
     this.hud.updateMate(this.mate, this.camera, this.pigeon.pos, width, height, this._tmp);
   }
 
