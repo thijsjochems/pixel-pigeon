@@ -37,6 +37,11 @@ const game = new Game(input, overlay, hudEl);
 const unlockAudio = () => game.audio.unlock();
 window.addEventListener('keydown', unlockAudio, { once: true });
 window.addEventListener('mousedown', unlockAudio, { once: true });
+// Safari op de iPhone geeft de toestemming pas bij het loslaten van een tik, niet bij
+// het neerzetten. Daarom touchend, en niet eenmalig: een context die iOS na een
+// telefoontje of schermvergrendeling heeft stilgezet, wordt bij de volgende tik
+// weer gewekt (unlock() doet dan alleen resume()).
+window.addEventListener('touchend', unlockAudio);
 
 function resize() {
   const w = app.clientWidth;
@@ -51,6 +56,10 @@ function resize() {
   game.resize(aspect);
 }
 window.addEventListener('resize', resize);
+// Draaien van de telefoon: niet elke mobiele browser stuurt dan meteen een resize, en
+// de adresbalk van Safari verandert de hoogte zonder dat window dat altijd meldt.
+window.addEventListener('orientationchange', () => setTimeout(resize, 150));
+if (window.visualViewport) window.visualViewport.addEventListener('resize', resize);
 resize();
 
 let last = performance.now();

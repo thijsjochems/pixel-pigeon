@@ -26,6 +26,37 @@ npm run preview  # de build lokaal bekijken
 | `R` | opnieuw |
 | `M` | geluid aan/uit |
 
+### Op de telefoon
+
+Gewoon in de browser, zonder knoppen op het scherm. Waar je duim neerkomt is het
+midden van een onzichtbare stick; er verschijnt een ring zolang je vinger ligt.
+
+| Gebaar | Actie |
+|---|---|
+| vinger slepen naar links of rechts | sturen (hoe verder, hoe scherper de bocht) |
+| vinger omhoog slepen en vasthouden | klapwieken (zelfde ritme en kosten als `Space`) |
+| vinger omlaag slepen en vasthouden | duiken |
+| kort tikken | poepen |
+| tikken met een tweede vinger | poepen terwijl je blijft sturen |
+| tikken op het titel- of eindscherm | opstijgen, of opnieuw beginnen |
+
+Een tik is loslaten binnen 0,28 seconde en binnen 14 pixels van waar je neerkwam.
+Wat langer of verder gaat is een sleep en poept dus nooit per ongeluk. De drempels
+staan in `TOUCH` in `src/input.js`.
+
+Gas geven gaat vanzelf: zolang je stuurvinger ligt vlieg je op volle snelheid, zoals
+een toetsenbordspeler `W` vasthoudt. Laat je los, dan zakt de duif terug naar
+kruissnelheid; dat is het moment om rustig te mikken en te tikken. Klapwieken kon er
+niet uit, want zonder klap zak je altijd (zie hieronder). Het zit daarom onder omhoog
+slepen, en duiken onder omlaag slepen, zodat één vinger genoeg is. Zit de duif op een
+randje of op straat, dan is een tik opstijgen in plaats van poepen, want zittend kun
+je toch niet mikken.
+
+Het eindscherm reageert pas na 1,2 seconde op een tik, anders gooit de laatste poep
+van de ronde je score meteen weg. Geluid gaat aan bij de eerste tik: mobiele browsers
+staan geen audio toe voordat je het scherm hebt aangeraakt. Tijdens cheeky pigeon time
+tik je snel achter elkaar in plaats van vast te houden.
+
 ## Het spel
 
 Je hebt **60 seconden**. Elke treffer zet er tijd bij: een auto 2,0 s, een voetganger
@@ -69,6 +100,7 @@ hoogte (>16 m valhoogte) telt dubbel: `SNIPE`.
 ```
 src/
   main.js      opstarten, vaste-stap lus, de pixel-look
+  input.js     toetsenbord, muis en touch, alles achter dezelfde acties
   game.js      wereld, score, combo's, camera
   pigeon.js    het vliegmodel — de belangrijkste getallen van het project
   city.js      stadsraster, gebouwen, botsingen, rijstroken
@@ -106,7 +138,7 @@ Verander je er één, dan mikt de speler mis of valt de ring van het scherm.
 Fase 1 en het grootste deel van fase 2 zijn af: vliegen, mikken met richtring, raken,
 scoren, combo's, munitie-lus, ronde met klok en tijdbonus, oplopende drukte,
 start- en eindscherm met highscore, en volledig gesynthetiseerd geluid.
-Nog open uit fase 2: doelenvariëteit (paraplu's, was aan de lijn, terrasjes),
-gevaren en mobiele besturing. Fase 3 (missies, wijken, progressie) staat in de briefing.
+Mobiele besturing is er ook (zie "Op de telefoon"). Nog open uit fase 2:
+doelenvariëteit (paraplu's, was aan de lijn, terrasjes) en gevaren. Fase 3 (missies, wijken, progressie) staat in de briefing.
 
 De oude versie staat in [legacy/](legacy/) en wordt nergens meer gebruikt.

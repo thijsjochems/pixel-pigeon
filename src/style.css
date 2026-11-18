@@ -30,6 +30,14 @@ html, body {
   color: var(--bone);
   -webkit-font-smoothing: none;
   user-select: none;
+  /* Telefoon: het spel krijgt elke aanraking. Geen scrollen, geen terugveren van de
+     pagina, geen knijpzoom, geen vergrootglas of menu bij lang drukken, en geen
+     grijze flits bij een tik. */
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: none;
+  overscroll-behavior: none;
 }
 
 #app {
@@ -43,6 +51,7 @@ html, body {
   display: block;
   image-rendering: pixelated;   /* dit maakt de pixels */
   image-rendering: crisp-edges;
+  touch-action: none;
 }
 
 #overlay, #hud {
@@ -69,9 +78,10 @@ html, body {
 
 .hud-top {
   position: absolute;
-  top: 18px;
-  left: 24px;
-  right: 24px;
+  /* Met viewport-fit=cover loopt het beeld onder de notch door; de HUD niet. */
+  top: calc(18px + env(safe-area-inset-top));
+  left: calc(24px + env(safe-area-inset-left));
+  right: calc(24px + env(safe-area-inset-right));
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -113,8 +123,8 @@ html, body {
 
 .hud-bottom {
   position: absolute;
-  bottom: 22px;
-  left: 24px;
+  bottom: calc(22px + env(safe-area-inset-bottom));
+  left: calc(24px + env(safe-area-inset-left));
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -193,6 +203,59 @@ html, body {
 @media (max-width: 720px) {
   .score { font-size: 22px; }
   .hint  { display: none; }
+}
+
+/* Op een smalle telefoon in staande stand passen de drie blokken bovenin net. */
+@media (max-width: 420px) {
+  .hud-top { top: calc(10px + env(safe-area-inset-top)); left: 12px; right: 12px; }
+  .hud-bottom { bottom: calc(14px + env(safe-area-inset-bottom)); left: 12px; }
+  .score { font-size: 18px; }
+  .combo { font-size: 14px; min-height: 22px; }
+  .best { font-size: 12px; }
+  .pip { width: 14px; height: 14px; }
+  .meter { width: 104px; }
+}
+
+/* De toetsenhulp heeft geen zin zonder toetsenbord. */
+body.touch .hint { display: none; }
+
+/* --- touch-stick -------------------------------------------------------- */
+
+/* Ring op de plek waar je duim neerkwam, met een knop die je vinger volgt.
+   Het element staat op 0,0 en wordt met transform naar de duim geschoven. */
+.stick {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  display: none;
+  pointer-events: none;
+  will-change: transform;
+}
+.stick.on { display: block; }
+.stick::before,
+.stick-knob {
+  content: '';
+  position: absolute;
+  border: 2px solid var(--bone);
+  box-shadow: 2px 2px 0 rgba(10, 11, 20, 0.6);
+}
+.stick::before {
+  width: 96px;
+  height: 96px;
+  left: -48px;
+  top: -48px;
+  border-radius: 50%;
+  opacity: 0.35;
+}
+.stick-knob {
+  width: 36px;
+  height: 36px;
+  left: -18px;
+  top: -18px;
+  border-radius: 50%;
+  background: rgba(242, 244, 255, 0.35);
 }
 
 /* --- klok ------------------------------------------------------------- */
@@ -342,6 +405,30 @@ html, body {
   .screen-title { font-size: 30px; }
   .stat-big { font-size: 30px; }
 }
+
+@media (max-width: 420px) {
+  .clock { font-size: 22px; }
+  .screen-inner { padding: 0 16px; }
+  .screen-title { font-size: 26px; }
+  .screen-body { margin-top: 16px; font-size: 9px; line-height: 2; }
+  .stats { gap: 10px; font-size: 8px; }
+  .screen-cta { margin-top: 22px; }
+  .cheeky-title { font-size: 18px; }
+  .cheeky-sub { font-size: 7px; letter-spacing: 0.12em; }
+}
+
+/* Liggende telefoon: weinig hoogte, dus het startscherm moet compacter. */
+@media (max-height: 460px) {
+  .screen-title { font-size: 24px; }
+  .screen-body { margin-top: 10px; font-size: 8px; line-height: 1.8; }
+  .screen-body p { margin: 4px 0; }
+  .screen-cta { margin-top: 12px; }
+  .stat-big { font-size: 26px; }
+  .stats { margin-top: 8px; }
+  .stat-best { margin-top: 8px; }
+}
+
+.touch-help b { color: var(--gold); }
 
 /* --- cheeky pigeon time ------------------------------------------------ */
 
